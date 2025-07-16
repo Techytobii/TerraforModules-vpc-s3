@@ -1,35 +1,24 @@
-# TerraforModules-vpc-s3# Mini Project: Terraform Modules - VPC and S3 Bucket with Backend Storage
+# TerraformModules-vpc-s3
 
----
-## 🎯 Objectives
+## Mini Project: Terraform Modules - VPC and S3 Bucket with Backend Storage
 
-✅ Develop reusable Terraform modules for infrastructure provisioning.  
-✅ Deploy a Virtual Private Cloud (VPC) with required subnets and networking components.  
-✅ Create an Amazon S3 bucket for Terraform state file storage.  
-✅ Implement remote backend configuration in Terraform to store and manage state securely in S3.  
-✅ Understand and apply Infrastructure as Code (IaC) best practices with Terraform.
+## Objectives
 
----
+- Develop reusable Terraform modules for infrastructure provisioning.
+- Deploy a Virtual Private Cloud (VPC) with subnets.
+- Create an Amazon S3 bucket for Terraform state storage.
+- Implement remote backend configuration in Terraform.
 
-## 🛠️ Prerequisites
 
-Ensure you have the following before starting:
+## Prerequisites
 
-- **Terraform** installed → [Download Terraform](https://developer.hashicorp.com/terraform/downloads)  
-- **AWS Account** with permissions to:
-  - Create and manage VPCs
-  - Create S3 buckets
-- Configured AWS CLI profile or environment variables:
-  ```bash
-  aws configure
-  ```
-- Git installed locally for version control.
+- Terraform installed ([Download Terraform](https://developer.hashicorp.com/terraform/downloads))
+- AWS Account with permissions to create VPCs and S3 buckets
+- AWS CLI configured
+- Git installed
 
----
 
-## 🗂️ Project Structure
-
-Here’s a recommended folder layout for your project:
+## Project Structure
 
 ```
 /terraform
@@ -51,93 +40,141 @@ Here’s a recommended folder layout for your project:
 README.md
 ```
 
-- **modules/** → Reusable Terraform building blocks.  
-- **environments/** → Environment-specific deployments (e.g., dev, prod).
+![Project Structure](./img/project-structure.png)
 
->> ![project-structure](./img/project-structure.png)
-
----
-
-## 🪣 Terraform Backend Configuration
-
-Example backend configuration (`backend.tf`):
+## Backend Configuration Example
 
 ```hcl
- terraform {
-   backend "s3" {
-     bucket         = "my-terraform-state-bucket"
-     key            = "terraform.tfstate"
-     region         = "us-west-2"
-     encrypt        = true
-   }
+terraform {
+  backend "s3" {
+    bucket = "my-terraform-state-bucket"
+    key    = "terraform.tfstate"
+    region = "us-west-2"
+    encrypt = true
   }
+}
 ```
->> ![backend-tf](./img/backend-tf.png)
 
----
+![Backend Config](./img/backend-tf.png)
 
-## 🚀 How to Deploy
-
-### 1. Clone the Repository
+## Deployment Steps
 
 ```bash
 git clone https://github.com/Techytobii/TerraforModules-vpc-s3.git
 cd TerraforModules-vpc-s3
-```
->> ![git-clone](./img/git-repo.png)
-
-
-### 2. Initialize Terraform
-
-```bash
 terraform init
-```
-
-### 3. Review the Execution Plan
-
-```bash
 terraform plan
-```
-
-### 4. Apply Changes
-
-```bash
 terraform apply
 ```
-
-Confirm with `yes` when prompted.
-
-
----
-
-## 🔐 Security Considerations
-
-- Enable versioning on your S3 bucket for Terraform state history.
-- Apply least-privilege IAM policies for Terraform to manage only necessary resources.
-- Never commit sensitive credentials or secrets to version control.
-
----
-
-## 📸 Screenshots / Images
-
 ![terraform-init](./img/terraform-init.png)
 
----
-
-## ✅ Outputs
-
-Upon successful deployment, Terraform will output:
+## Outputs
 
 - VPC ID
-- Subnet IDs
+- Public Subnet ID
 - S3 Bucket Name
-- (Any other relevant outputs)
 
----
 
-## 👤 Author
+## Author
 
-- **Oluwatobi Olofinkuade**
-- GitHub: [https://github.com/Techytobii/TerraforModules-vpc-s3](https://github.com/Techytobii/TerraforModules-vpc-s3)
+Oluwatobi Olofinkuade  
+GitHub: [https://github.com/Techytobii/TerraforModules-vpc-s3](https://github.com/Techytobii/TerraforModules-vpc-s3)
 
----
+## Code Files
+
+### modules/vpc/main.tf
+```hcl
+resource "aws_vpc" "main" {
+  cidr_block = var.vpc_cidr
+}
+
+resource "aws_subnet" "public" {
+  vpc_id             = aws_vpc.main.id
+  cidr_block         = var.public_subnet_cidr
+  availability_zone  = var.availability_zone
+}
+```
+
+### modules/vpc/variables.tf
+```hcl
+variable "vpc_cidr" {}
+variable "public_subnet_cidr" {}
+variable "availability_zone" {}
+```
+
+### modules/vpc/outputs.tf
+```hcl
+output "vpc_id" {
+  value = aws_vpc.main.id
+}
+
+output "public_subnet_id" {
+  value = aws_subnet.public.id
+}
+```
+
+### modules/s3/main.tf
+```hcl
+resource "aws_s3_bucket" "this" {
+  bucket = var.bucket_name
+  acl    = "private"
+}
+```
+
+### modules/s3/variables.tf
+```hcl
+variable "bucket_name" {}
+```
+
+### modules/s3/outputs.tf
+```hcl
+output "bucket_name" {
+  value = aws_s3_bucket.this.bucket
+}
+```
+
+### environments/dev/backend.tf
+```hcl
+terraform {
+  backend "s3" {
+    bucket = "my-terraform-state-bucket"
+    key    = "terraform/state/terraform.tfstate"
+    region = "us-west-2"
+  }
+}
+```
+
+### environments/dev/main.tf
+```hcl
+module "vpc" {
+  source                = "../../modules/vpc"
+  vpc_cidr              = "10.0.0.0/16"
+  public_subnet_cidr    = "10.0.1.0/24"
+  availability_zone     = "us-west-2a"
+}
+
+module "s3" {
+  source       = "../../modules/s3"
+  bucket_name  = "my-terraform-state-bucket"
+}
+```
+
+### environments/dev/variables.tf
+```hcl
+# Environment-specific variables if needed
+```
+
+### environments/dev/outputs.tf
+```hcl
+output "vpc_id" {
+  value = module.vpc.vpc_id
+}
+
+output "public_subnet_id" {
+  value = module.vpc.public_subnet_id
+}
+
+output "s3_bucket_name" {
+  value = module.s3.bucket_name
+}
+```
